@@ -1,1 +1,8 @@
-.venv
+# secrets
+.env
+*.env
+# chroma local
+.chroma/
+# venv
+.venv/
+__pycache__/
