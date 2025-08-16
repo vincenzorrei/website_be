@@ -8,6 +8,7 @@ langchain-openai>=0.2,<0.3
 langchain-community>=0.3,<0.4
 langchain-text-splitters>=0.3,<0.4
 langchain-chroma>=0.1,<0.2
+langchain-qdrant>=0.2
 
 chromadb>=0.5.5
 qdrant-client>=1.9
