@@ -17,13 +17,16 @@ class _Settings:
     API_TOKEN: str | None = os.getenv("API_TOKEN")
     # Models
     OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
-    CHAT_MODEL: str = os.getenv("CHAT_MODEL", "gpt-4o-mini")
+    CHAT_MODEL: str = os.getenv("CHAT_MODEL", "gpt-4o")
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-large")
-    TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.2"))
+    TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.9"))
+    MAX_TOKENS: int = int(os.getenv("MAX_TOKENS", "1000"))
     # Vector DB
     VECTOR_BACKEND: str = os.getenv("VECTOR_BACKEND", "chroma")  # chroma | qdrant
     CHROMA_DIR: str = os.getenv("CHROMA_DIR", ".chroma")
     QDRANT_URL: str | None = os.getenv("QDRANT_URL")
     QDRANT_API_KEY: str | None = os.getenv("QDRANT_API_KEY")
+    # RAG
+    
 
 settings = _Settings()
