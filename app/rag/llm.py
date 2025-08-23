@@ -17,7 +17,7 @@ def get_llm():
             api_key=settings.OPENAI_API_KEY,
             max_tokens=settings.MAX_TOKENS,
             temperature=1.0,
-            request_timeout=60
+            request_timeout=60,
         )
     else:
         return ChatOpenAI(
