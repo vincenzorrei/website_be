@@ -1,4 +1,7 @@
 # app/rag/chains.py
+import asyncio
+import time
+
 from .llm import get_llm
 from .memory import append_turn, get_history
 from .prompts import SYSTEM_PROMPT
