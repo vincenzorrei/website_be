@@ -99,25 +99,31 @@ async def stream_answer(
         question, tenant_id, session_id, filters
     )
 
-    full_answer_parts: list[str] = []
-    last_heartbeat_time = time.time()
+    # Invia heartbeat iniziale
+    yield ": heartbeat\n\n"
 
-    # Invia un heartbeat immediato all'inizio
-    yield ": initial heartbeat\n\n"
+    # Crea il task per lo streaming
+    llm_task = asyncio.create_task(collect_stream_data(llm, messages))
 
-    async for chunk in llm.astream(messages):
-        part = getattr(chunk, "content", None)
-        if not part:
-            continue
+    # Invia heartbeat ogni 10 secondi finché non arrivano dati
+    last_heartbeat = time.time()
+    full_answer_parts = []
 
-        full_answer_parts.append(part)  # Accumula le parti
-        yield f"data: {part}\n\n"
-
-        # Invia heartbeat ogni 20 secondi durante lo streaming
-        current_time = time.time()
-        if current_time - last_heartbeat_time > 20:
-            yield ": heartbeat\n\n"
-            last_heartbeat_time = current_time
+    while not llm_task.done():
+        try:
+            # Aspetta i dati per max 1 secondo
+            result = await asyncio.wait_for(llm_task, timeout=1.0)
+            # Se arriviamo qui, abbiamo i dati
+            for part in result:
+                full_answer_parts.append(part)
+                yield f"data: {part}\n\n"
+            break
+        except asyncio.TimeoutError:
+            # Controlla se serve un heartbeat
+            current_time = time.time()
+            if current_time - last_heartbeat >= 10:
+                yield ": heartbeat\n\n"
+                last_heartbeat = current_time
 
     # Update session history at the end of the stream
     final_answer = "".join(full_answer_parts).strip() or "(no content)"
@@ -129,3 +135,13 @@ async def stream_answer(
 
     # Final event
     yield "event: end\ndata: [DONE]\n\n"
+
+
+async def collect_stream_data(llm, messages):
+    """Raccoglie tutti i dati dallo stream"""
+    parts = []
+    async for chunk in llm.astream(messages):
+        part = getattr(chunk, "content", None)
+        if part:
+            parts.append(part)
+    return parts
