@@ -100,29 +100,53 @@ async def stream_answer(
     )
 
     full_answer_parts: list[str] = []
-    last_chunk_time = time.time()
-    async for chunk in llm.astream(messages):
-        part = getattr(chunk, "content", None)
-        if not part:
-            continue
+    start_time = time.time()
+    print(f"Starting stream at {start_time}")
 
-        # Invia heartbeat se passati più di 10 secondi dall'ultimo chunk
+    # Invia un heartbeat immediato all'inizio
+    yield ": initial heartbeat\n\n"
+
+    # We'll create an async generator for the LLM
+    llm_stream = llm.astream(messages)
+
+    # Time of last data (or heartbeat) we sent
+    last_sent_time = time.time()
+    # We'll set the heartbeat interval to 25 seconds to stay under Railway's 30s timeout
+    heartbeat_interval = 25
+
+    while True:
+        # Check if it's time to send a heartbeat
         current_time = time.time()
-        if current_time - last_chunk_time > 10:
-            yield ": heartbeat\n\n"  # SSE comment per mantenere la connessione
-            last_chunk_time = current_time
+        if current_time - last_sent_time > heartbeat_interval:
+            # Send a heartbeat
+            yield ": heartbeat\n\n"
+            last_sent_time = current_time
 
-        full_answer_parts.append(part)
-        yield f"data: {part}\n\n"
+        try:
+            # Wait for the next chunk with a short timeout so we can break to check for heartbeats
+            # We use a timeout of 1 second to not delay the tokens too much
+            chunk = await asyncio.wait_for(llm_stream.__anext__(), timeout=1.0)
+            part = getattr(chunk, "content", None)
+            if part:
+                yield f"data: {part}\n\n"
+                last_sent_time = current_time  # update the time since we sent data
+        except asyncio.TimeoutError:
+            # Timeout waiting for chunk, we'll go back and check if we need to send a heartbeat
+            pass
+        except StopAsyncIteration:
+            # The stream is done
+            break
+        except Exception as e:
+            yield f"event: error\ndata: {str(e)}\n\n"
+            break
 
+    # Update session history at the end of the stream
     final_answer = "".join(full_answer_parts).strip() or "(no content)"
-
-    # Aggiorna memoria di sessione a fine stream
     try:
         append_turn(tenant_id, session_id, "user", question)
         append_turn(tenant_id, session_id, "assistant", final_answer)
     except Exception:
         pass
 
-    # Evento di chiusura opzionale
+    # Final event
     yield "event: end\ndata: [DONE]\n\n"
