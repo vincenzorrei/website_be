@@ -5,11 +5,16 @@ def get_llm():
     # If no API key, raise informative error
     if not settings.OPENAI_API_KEY:
         raise RuntimeError("OPENAI_API_KEY missing. Set it in the environment to enable LLM answers.")
+    if settings.CHAT_MODEL is not "gpt-5":
+        return ChatOpenAI(model=settings.CHAT_MODEL,
+            temperature=settings.TEMPERATURE,
+            api_key=settings.OPENAI_API_KEY,
+            max_tokens=settings.MAX_TOKENS,
+            )
     return ChatOpenAI(model=settings.CHAT_MODEL,
-        temperature=settings.TEMPERATURE,
         api_key=settings.OPENAI_API_KEY,
         max_tokens=settings.MAX_TOKENS,
-        )
+    )
 
 def get_embeddings():
     if not settings.OPENAI_API_KEY:
