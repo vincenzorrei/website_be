@@ -16,7 +16,8 @@ def get_llm():
             model=settings.CHAT_MODEL,
             api_key=settings.OPENAI_API_KEY,
             max_tokens=settings.MAX_TOKENS,
-            temperature=1.0,  # Forziamo 1.0 come richiesto da GPT-5
+            temperature=1.0,
+            request_timeout=60
         )
     else:
         return ChatOpenAI(
