@@ -100,47 +100,24 @@ async def stream_answer(
     )
 
     full_answer_parts: list[str] = []
-    start_time = time.time()
-    print(f"Starting stream at {start_time}")
+    last_heartbeat_time = time.time()
 
     # Invia un heartbeat immediato all'inizio
     yield ": initial heartbeat\n\n"
 
-    # We'll create an async generator for the LLM
-    llm_stream = llm.astream(messages)
+    async for chunk in llm.astream(messages):
+        part = getattr(chunk, "content", None)
+        if not part:
+            continue
 
+        full_answer_parts.append(part)  # Accumula le parti
+        yield f"data: {part}\n\n"
 
-
-    # Time of last data (or heartbeat) we sent
-    last_sent_time = time.time()
-    # We'll set the heartbeat interval to 25 seconds to stay under Railway's 30s timeout
-    heartbeat_interval = 25
-
-    while True:
-        # Check if it's time to send a heartbeat
+        # Invia heartbeat ogni 20 secondi durante lo streaming
         current_time = time.time()
-        if current_time - last_sent_time > heartbeat_interval:
-            # Send a heartbeat
+        if current_time - last_heartbeat_time > 20:
             yield ": heartbeat\n\n"
-            last_sent_time = current_time
-
-        try:
-            # Wait for the next chunk with a short timeout so we can break to check for heartbeats
-            # We use a timeout of 1 second to not delay the tokens too much
-            chunk = await asyncio.wait_for(llm_stream.__anext__(), timeout=1.0)
-            part = getattr(chunk, "content", None)
-            if part:
-                yield f"data: {part}\n\n"
-                last_sent_time = current_time  # update the time since we sent data
-        except asyncio.TimeoutError:
-            # Timeout waiting for chunk, we'll go back and check if we need to send a heartbeat
-            pass
-        except StopAsyncIteration:
-            # The stream is done
-            break
-        except Exception as e:
-            yield f"event: error\ndata: {str(e)}\n\n"
-            break
+            last_heartbeat_time = current_time
 
     # Update session history at the end of the stream
     final_answer = "".join(full_answer_parts).strip() or "(no content)"
