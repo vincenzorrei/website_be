@@ -109,6 +109,8 @@ async def stream_answer(
     # We'll create an async generator for the LLM
     llm_stream = llm.astream(messages)
 
+
+
     # Time of last data (or heartbeat) we sent
     last_sent_time = time.time()
     # We'll set the heartbeat interval to 25 seconds to stay under Railway's 30s timeout
