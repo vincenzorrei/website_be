@@ -26,7 +26,7 @@ class _Settings:
     CHROMA_DIR: str = os.getenv("CHROMA_DIR", ".chroma")
     QDRANT_URL: str | None = os.getenv("QDRANT_URL")
     QDRANT_API_KEY: str | None = os.getenv("QDRANT_API_KEY")
-    # RAG
-    
+    # N8N
+    N8N_CHAT_WEBHOOK: str | None = os.getenv("N8N_CHAT_WEBHOOK")
 
 settings = _Settings()
