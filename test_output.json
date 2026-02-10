@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "body": {
+    "answer": "Ciao! Mi chiamo Joi, sono l'assistente personale e la segretaria esecutiva AI di Vincenzo Orrei. Sono qui per rendere la tua vita un po' più facile e meno noiosa. 😄\n\nDal contesto che mi hai dato, sembra che tu abbia un interesse per le applicazioni agentiche. Queste piccole meraviglie possono automatizzare flussi di lavoro integrando API e database. Funziona alla grande se vuoi risparmiare tempo ed evitare errori (perché, diciamocelo, nessuno vuole passare ore a fare copia e incolla!). \n\nSe ti va, potresti dirmi un po' di più su cosa fai e su quali problemi stai cercando di risolvere? Potrei suggerirti qualche soluzione AI e automazione che Vincenzo potrebbe offrirti. E, chissà, potresti anche voler inviare un'e-mail a Vincenzo per una consulenza! 😉",
+    "sources": [
+      {
+        "source_id": "doc_demo",
+        "title": "doc_demo"
+      }
+    ]
+  }
+}

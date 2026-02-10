@@ -10,14 +10,18 @@ def get_llm():
             "OPENAI_API_KEY missing. Set it in the environment to enable LLM answers."
         )
 
-    # Gestione speciale per GPT-5
+    # GPT-5 only accepts temperature=1 and does NOT support max_tokens.
+    # It uses reasoning_effort and max_completion_tokens instead.
     if "gpt-5" in settings.CHAT_MODEL.lower():
         return ChatOpenAI(
             model=settings.CHAT_MODEL,
             api_key=settings.OPENAI_API_KEY,
-            max_tokens=settings.MAX_TOKENS,
-            temperature=1.0,
+            temperature=1,
             request_timeout=60,
+            model_kwargs={
+                "reasoning_effort": settings.REASONING_EFFORT,
+                "max_completion_tokens": settings.MAX_TOKENS,
+            },
         )
     else:
         return ChatOpenAI(

@@ -1,50 +1,93 @@
 # app/rag/chains.py
 import asyncio
+import logging
 import time
+
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 from .llm import get_llm
 from .memory import append_turn, get_history
 from .prompts import SYSTEM_PROMPT
 from .retriever import build_retriever
 
+logger = logging.getLogger(__name__)
+
+# Minimum relevance score to consider a document useful
+_RELEVANCE_THRESHOLD = 0.25
+
+
+def _check_relevance(docs) -> list:
+    """Filter docs by relevance score when available."""
+    if not docs:
+        return []
+    relevant = []
+    for d in docs:
+        score = d.metadata.get("relevance_score")
+        if score is not None and score < _RELEVANCE_THRESHOLD:
+            continue
+        relevant.append(d)
+    return relevant
+
 
 def _build_context_and_history(
     question: str, tenant_id: str, session_id: str, filters: dict | None
 ):
-    """Recupera docs e history e costruisce il prompt."""
+    """Recupera docs e history e costruisce il prompt con messaggi separati."""
     retriever = build_retriever(tenant_id, filters)
     try:
-        docs = retriever.invoke(question)  # API nuova (niente deprecation)
+        docs = retriever.invoke(question)
     except Exception:
         docs = []
 
-    context = "\n\n".join(d.page_content for d in docs[:4]) if docs else "No context."
-    history = get_history(tenant_id, session_id)
-    history_text = (
-        "\n".join(f"{r.upper()}: {c}" for r, c in history[-12:]) if history else "None"
+    # Apply relevance filtering
+    relevant_docs = _check_relevance(docs) if docs else []
+
+    # Build context string
+    if relevant_docs:
+        context = "\n\n".join(d.page_content for d in relevant_docs[:4])
+    else:
+        context = (
+            "[NO RELEVANT CONTEXT FOUND] "
+            "The knowledge base did not return useful information for this query. "
+            "Answer based on your general expertise, and be transparent about it."
+        )
+
+    # Build message list with proper separation
+    messages = []
+
+    # 1. System prompt
+    messages.append(SystemMessage(content=SYSTEM_PROMPT))
+
+    # 2. RAG context as a dedicated system message
+    messages.append(
+        SystemMessage(
+            content=(
+                "Retrieved context from the knowledge base "
+                "(use this to ground your answer):\n\n"
+                f"{context}"
+            )
+        )
     )
 
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": f"""Conversation history:
-{history_text}
+    # 3. Conversation history as separate HumanMessage/AIMessage
+    history = get_history(tenant_id, session_id)
+    for role, content in history:
+        if role == "user":
+            messages.append(HumanMessage(content=content))
+        elif role == "assistant":
+            messages.append(AIMessage(content=content))
 
-Question: {question}
+    # 4. Current user question
+    messages.append(HumanMessage(content=question))
 
-Context:
-{context}""",
-        },
-    ]
-
-    # Mappa fonti
+    # Map sources
+    source_docs = relevant_docs[:4] if relevant_docs else docs[:4]
     sources = [
         {
             "source_id": d.metadata.get("source_id", ""),
             "title": d.metadata.get("title", ""),
         }
-        for d in docs[:4]
+        for d in source_docs
     ]
     return messages, sources
 

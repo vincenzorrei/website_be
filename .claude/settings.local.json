@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv\\\\Scripts\\\\python.exe -m pytest:*)",
+      "Bash(C:\\\\Users\\\\vinor\\\\Desktop\\\\Projects\\\\website_be\\\\.venv\\\\Scripts\\\\python.exe -m pytest:*)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_chat_smoke.py -v --tb=long)",
+      "Bash(.venv/Scripts/pip.exe install:*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "WebSearch",
+      "WebFetch(domain:community.openai.com)",
+      "Bash(python:*)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:developers.openai.com)",
+      "WebFetch(domain:cookbook.openai.com)",
+      "Bash(pip install:*)",
+      "Bash(uvicorn app.main:app:*)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)",
+      "Bash(ping:*)",
+      "Bash(dir:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Recurse -Attributes !H | Where-Object {$_FullName -notmatch ''.venv|__pycache__|.chroma''} | Select-Object FullName | ForEach-Object {$_FullName.Replace\\(''C:\\\\Users\\\\vinor\\\\Desktop\\\\Projects\\\\website_be\\\\'', ''''\\)} | Sort-Object\")",
+      "Bash(pip show:*)"
+    ]
+  }
+}

@@ -1,86 +1,71 @@
-# app/api/router_chat.py - Versione semplificata per n8n AI Agent
+# app/api/router_chat.py
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
-import httpx
-import asyncio
-from ..models.chat import ChatRequest, ChatResponse
+from ..models.chat import ChatRequest, ChatResponse, Source
 from .deps import require_token
-from ..core.settings import settings
+from ..rag.chains import answer_question
 
 router = APIRouter()
 
+_MAX_INPUT_LENGTH = 2000
+
+# Patterns that indicate prompt injection attempts
+_INJECTION_PATTERNS = [
+    re.compile(r"ignore\s+(all\s+)?(previous|above|prior)\s+(instructions|prompts|rules)", re.IGNORECASE),
+    re.compile(r"you\s+are\s+now\s+(a|an)\s+", re.IGNORECASE),
+    re.compile(r"new\s+instructions?\s*:", re.IGNORECASE),
+    re.compile(r"system\s*prompt\s*:", re.IGNORECASE),
+    re.compile(r"forget\s+(everything|all|your)\s+(you|instructions|rules)", re.IGNORECASE),
+    re.compile(r"override\s+(system|your)\s+(prompt|instructions|rules)", re.IGNORECASE),
+    re.compile(r"disregard\s+(all|any|previous|your)\s+(previous\s+)?(instructions|rules|prompts)", re.IGNORECASE),
+]
+
+
+def _validate_input(text: str) -> str:
+    """Validate and sanitize user input. Returns cleaned text or raises HTTPException."""
+    if len(text) > _MAX_INPUT_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Message too long. Maximum {_MAX_INPUT_LENGTH} characters allowed.",
+        )
+
+    for pattern in _INJECTION_PATTERNS:
+        if pattern.search(text):
+            raise HTTPException(
+                status_code=400,
+                detail="Your message was flagged by our safety filter. Please rephrase your question.",
+            )
+
+    return text.strip()
+
+
 @router.post("/chat", response_model=ChatResponse)
-async def chat_via_n8n(req: ChatRequest, _auth=Depends(require_token)):
+async def chat(req: ChatRequest, _auth=Depends(require_token)):
     """
-    Delega la chat all'AI Agent di n8n.
-    Estrae l'ultima domanda e la invia a n8n.
+    Risponde alla domanda dell'utente usando la RAG chain LangChain.
     """
-    
     # Estrai l'ultima domanda dell'utente
     question = ""
     for message in reversed(req.messages):
         if message.role == "user":
             question = message.content.strip()
             break
-    
+
     if not question:
         raise HTTPException(status_code=400, detail="No user message found")
-    
-    if not settings.N8N_CHAT_WEBHOOK:
-        # Fallback se n8n non configurato
-        return ChatResponse(
-            answer=f"Backend ready. Configure N8N_CHAT_WEBHOOK to enable AI. Your question: {question}",
-            sources=[]
-        )
-    
-    # Payload semplice per n8n AI Agent
-    payload = {
-        "chatInput": question,
-        "sessionId": req.session_id or "default",
-        "metadata": {
-            "tenant_id": req.tenant_id,
-            "timestamp": __import__("datetime").datetime.utcnow().isoformat()
-        }
-    }
-    
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                settings.N8N_CHAT_WEBHOOK, 
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
-            
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=502, 
-                    detail=f"n8n webhook failed with status {response.status_code}: {response.text}"
-                )
-            
-            # n8n AI Agent dovrebbe restituire qualcosa come: {"output": "risposta..."}
-            result = response.json()
-            
-            # Estrai la risposta dall'AI Agent
-            answer = ""
-            if isinstance(result, dict):
-                answer = result.get("output", "") or result.get("response", "") or result.get("text", "")
-            elif isinstance(result, str):
-                answer = result
-            
-            if not answer.strip():
-                answer = "Non ho ricevuto una risposta valida dall'AI. Riprova."
-            
-            return ChatResponse(
-                answer=answer.strip(),
-                sources=[]  # Per ora senza sources, li aggiungeremo dopo
-            )
-            
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="n8n AI Agent timeout")
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Error connecting to n8n: {str(e)}")
-    except Exception as e:
-        # Fallback in caso di errore
-        return ChatResponse(
-            answer="Scusa, sto avendo problemi tecnici. Riprova tra un momento.",
-            sources=[]
-        )
+
+    # Prompt injection guard
+    question = _validate_input(question)
+
+    answer, sources = answer_question(
+        question=question,
+        tenant_id=req.tenant_id,
+        session_id=req.session_id or "default",
+        filters=req.filters,
+    )
+
+    return ChatResponse(
+        answer=answer,
+        sources=[Source(**s) for s in sources],
+    )

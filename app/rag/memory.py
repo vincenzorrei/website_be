@@ -3,7 +3,7 @@ from typing import Deque, Dict, List, Tuple
 
 # In dev, semplice dict in-memory. In prod, sostituisci con Redis.
 _STORE: Dict[str, Deque[Tuple[str,str]]] = {}
-WINDOW = 6  # ultime 6 turnazioni (user/assistant)
+WINDOW = 25  # ultime 25 turnazioni (user/assistant)
 
 def _key(tenant_id: str, session_id: str) -> str:
     return f"{tenant_id}:{session_id}"

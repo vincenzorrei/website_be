@@ -16,11 +16,30 @@ def get_vectorstore(tenant_id: str):
 
     if settings.VECTOR_BACKEND == "qdrant":
         from qdrant_client import QdrantClient
+        from qdrant_client.models import Distance, VectorParams
         from langchain_qdrant import QdrantVectorStore
         if not settings.QDRANT_URL or not settings.QDRANT_API_KEY:
             raise RuntimeError("QDRANT_URL/QDRANT_API_KEY not configured")
         client = QdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY, timeout=30)
-        return QdrantVectorStore(client=client, collection_name=coll, embeddings=emb)
+        # Ensure the collection exists with proper indexes
+        if not client.collection_exists(coll):
+            from qdrant_client.models import PayloadSchemaType
+            sample = emb.embed_query("test")
+            client.create_collection(
+                collection_name=coll,
+                vectors_config=VectorParams(size=len(sample), distance=Distance.COSINE),
+            )
+            client.create_payload_index(
+                collection_name=coll,
+                field_name="metadata.source_id",
+                field_schema=PayloadSchemaType.KEYWORD,
+            )
+        return QdrantVectorStore(
+            client=client,
+            collection_name=coll,
+            embedding=emb,
+            validate_collection_config=False,
+        )
 
     # Default: Chroma (nuovo import dal pacchetto langchain-chroma)
     from langchain_chroma import Chroma
