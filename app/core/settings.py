@@ -22,7 +22,7 @@ class _Settings:
     TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.9"))
     MAX_TOKENS: int = int(os.getenv("MAX_TOKENS", "1000"))
     # Vector DB
-    VECTOR_BACKEND: str = os.getenv("VECTOR_BACKEND", "chroma")  # chroma | qdrant
+    VECTOR_BACKEND: str = os.getenv("VECTOR_BACKEND", "chroma").strip()  # chroma | qdrant
     CHROMA_DIR: str = os.getenv("CHROMA_DIR", ".chroma")
     QDRANT_URL: str | None = os.getenv("QDRANT_URL")
     QDRANT_API_KEY: str | None = os.getenv("QDRANT_API_KEY")

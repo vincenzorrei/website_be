@@ -18,10 +18,8 @@ def get_llm():
             api_key=settings.OPENAI_API_KEY,
             temperature=1,
             request_timeout=60,
-            model_kwargs={
-                "reasoning_effort": settings.REASONING_EFFORT,
-                "max_completion_tokens": settings.MAX_TOKENS,
-            },
+            reasoning_effort=settings.REASONING_EFFORT,
+            max_completion_tokens=settings.MAX_TOKENS,
         )
     else:
         return ChatOpenAI(

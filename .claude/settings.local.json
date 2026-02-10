@@ -19,7 +19,8 @@
       "Bash(ping:*)",
       "Bash(dir:*)",
       "Bash(powershell -Command \"Get-ChildItem -Recurse -Attributes !H | Where-Object {$_FullName -notmatch ''.venv|__pycache__|.chroma''} | Select-Object FullName | ForEach-Object {$_FullName.Replace\\(''C:\\\\Users\\\\vinor\\\\Desktop\\\\Projects\\\\website_be\\\\'', ''''\\)} | Sort-Object\")",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(podman ps:*)"
     ]
   }
 }
